@@ -1,36 +1,44 @@
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 
-const data = [
-    {
-        title: "Node JS",
-        createdTime: "13/07/2025"
-    },
-    {
-        title: "Typescript",
-        createdTime: "05/07/2025"
-    },
-    
-]
+const filePath = path.join(__dirname, "./db/todos.json");
 
-const server = http.createServer((req, res)=>{
-    // console.log(req.url, req.method);
-    
-    if(req.url === "/todos" && req.method === "GET"){
-        res.writeHead(200, {
-            "content-type": "application/json",
-            "email": "sanjid@gmail.com"
-        })
-        // res.setHeader("content-type", "text/plain");
-        // res.statusCode = 200;
-        res.end(JSON.stringify(data));
+const server = http.createServer((req, res) => {
+  if (req.url === "/todos" && req.method === "GET") {
+    const data = fs.readFileSync(filePath, { encoding: "utf-8" });
+    res.writeHead(200, {
+      "content-type": "application/json",
+    });
 
-    }else if(req.url === "/createTodo" && req.method === "POST"){
-        res.end("Creating todos");
-    }else{
-        res.end("Route Not Found.");
-    }    
-})
+    res.end(data);
+  } else if (req.url === "/createTodo" && req.method === "POST") {
+    let data = "";
 
-server.listen(5000, "127.0.0.1", ()=>{
-    console.log("Server listening port 5000");
-})
+    req.on("data", (chunk) => {
+      data = data + chunk;
+    });
+
+    req.on("end", () => {
+      const { title, details } = JSON.parse(data); // sent data received here
+
+      const currentDate = new Date().toLocaleString();
+
+      const allTodos = fs.readFileSync(filePath, { encoding: "utf-8" }); // getting previous stored todos
+      const parsedAllTodos = JSON.parse(allTodos);
+
+      parsedAllTodos.push({ title, details, currentDate }); // added sent data with all previous data
+
+      fs.writeFileSync(filePath, JSON.stringify(parsedAllTodos), { encoding: "utf-8",}); // writing data on file
+
+      res.end(JSON.stringify({ title, details, currentDate }));
+    });
+    res.end("Created todos successfully.");
+  } else {
+    res.end("Route Not Found.");
+  }
+});
+
+server.listen(5000, "127.0.0.1", () => {
+  console.log("Server listening port 5000");
+});
